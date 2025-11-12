@@ -1,0 +1,8 @@
+{{define "image"}}
+{{template "base" .}}
+Output file: {{.FilePath}}
+Dimensions: {{.Dimensions}}
+{{if .Message}}
+Status: {{.Message}}
+{{end}}
+{{end}}

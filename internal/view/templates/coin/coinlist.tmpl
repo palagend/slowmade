@@ -1,0 +1,12 @@
+{{title "SUPPORTED CRYPTOCURRENCIES"}}
+
+{{bold "Coin Information"}}
+{{divider}}
+Total supported currencies: {{.TotalCount}}
+
+{{bold "Currency List"}}
+{{divider}}
+SYMBOL | NAME             | COIN TYPE | CATEGORY  | STATUS
+{{repeat "-" 7}}+{{repeat "-" 17}}+{{repeat "-" 11}}+{{repeat "-" 10}}+{{repeat "-" 8}}
+{{range .Coins}}{{.GetSymbol | printf "%-6s"}} | {{.GetName | printf "%-15s"}} | {{.GetCoinType | formatCoinType}} | {{.GetCategory | printf "%-8s"}} | {{.GetStatus | printf "%-6s"}}
+{{end}}
