@@ -10,7 +10,7 @@ import (
 
 func LoadConfig(configPath string) (*AppConfig, error) {
 	if configPath != "" {
-		viper.SetConfigFile(configPath)
+		viper.SetConfigFile(expandPath(configPath))
 	} else {
 		// 搜索标准位置
 		viper.AddConfigPath(".")
