@@ -41,9 +41,11 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "~/.config/slowmade.yaml", "config file")
 	rootCmd.PersistentFlags().String("template-dir", "", "custom template directory")
+	rootCmd.PersistentFlags().StringP("keystore-dir", "k", "~/.slowmade/keystores", "keystore directory")
 	// 绑定环境变量
 	viper.SetEnvPrefix("SLOWMADE")
 	viper.BindPFlag("template.custom_template_dir", rootCmd.PersistentFlags().Lookup("template-dir"))
+	viper.BindPFlag("storage.keystore_dir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
 }
 
 func initializeConfig() error {
