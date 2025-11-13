@@ -1,0 +1,13 @@
+template:
+  custom_template_dir: "~/.slowmade/templates"
+  enable_custom_templates: true
+
+storage:
+  keystore_dir: "~/.slowmade/keystores"
+  encryption:
+    algorithm: "scrypt"
+    cost: 16384
+
+logging:
+  level: "info"
+  format: "text"

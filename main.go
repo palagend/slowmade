@@ -1,10 +1,6 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
-*/
 package main
 
-import "github.com/palagend/cipherkey/cmd"
+import "github.com/palagend/slowmade/cmd"
 
 func main() {
 	cmd.Execute()

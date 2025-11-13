@@ -1,0 +1,7 @@
+[O] Available Wallets:
+{{range .}}
+[i] {{.Name}} ({{.ID}})
+   Coins: {{len .Coins}} | Created: {{.CreationTime.Format "2006-01-02"}}
+{{else}}
+No wallets found. Create one with 'create --name <name>'
+{{end}}

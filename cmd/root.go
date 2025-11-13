@@ -3,46 +3,72 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+
+	"github.com/palagend/slowmade/internal/config"
+	"github.com/palagend/slowmade/internal/mvc/controllers"
+	"github.com/palagend/slowmade/internal/mvc/services"
+	"github.com/palagend/slowmade/internal/mvc/views"
+	"github.com/palagend/slowmade/internal/storage"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
-	configPath   string
-	coinSymbol   string
-	outputFormat string
-	verbose      bool
-	keystoreDir  string
-	password     string
-	passphrase   string
+	cfgFile          string
+	appConfig        *config.AppConfig
+	walletController *controllers.WalletController
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "cipherkey",
-	Short: "A secure HD cryptocurrency wallet CLI",
-	Long: `CipherKey is a modern hierarchical deterministic cryptocurrency wallet 
-with multi-coin support, customizable templates, and enterprise-grade security.`,
+	Use:   "wallet-cli",
+	Short: "A secure cryptocurrency wallet CLI",
+	Long: `A secure HD cryptocurrency wallet supporting multiple currencies,
+built with MVC architecture and enterprise-grade security.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return initializeConfig()
+	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
 func init() {
-	home, _ := os.UserHomeDir()
-	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Config file path")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", "text", "Output format")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "Password to open keystore")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/slowmade.yaml)")
+	// 绑定环境变量
+	viper.SetEnvPrefix("SLOWMADE")
+	viper.BindPFlag("template.custom_template_dir", rootCmd.PersistentFlags().Lookup("template-dir"))
+}
 
-	rootCmd.PersistentFlags().StringVarP(&coinSymbol, "coin", "C", "btc", "Coin type symbol")
-	rootCmd.PersistentFlags().StringVarP(&passphrase, "passphrase", "P", "", "Passphrase for seed derivation")
-	rootCmd.PersistentFlags().StringVarP(&keystoreDir, "keystore", "K", filepath.Join(home, ".cipherkey", "keystore"), "The directory to save keystore file")
+func initializeConfig() error {
+	var err error
+	appConfig, err = config.LoadConfig(cfgFile)
+	if err != nil {
+		return err
+	}
 
-	// 注册子命令
-	rootCmd.AddCommand(createCmd, listCoinsCmd, qrcodeCmd, keysCmd)
+	initializeDependencies()
+	return nil
+}
+
+func initializeDependencies() {
+	// 初始化存储
+	repo := storage.NewWalletRepository(appConfig)
+
+	// 初始化服务
+	cryptoService := services.NewCryptoService()
+	walletService := services.NewWalletService(repo, cryptoService)
+
+	// 初始化视图
+	renderer := views.NewTemplateRenderer(&appConfig.Template)
+
+	// 打印模板状态（调试用）
+	renderer.PrintStatus()
+
+	// 初始化控制器[2](@ref)
+	walletController = controllers.NewWalletController(walletService, renderer)
 }
