@@ -31,6 +31,9 @@ func extractDefaultTemplates(outputDir string) error {
 	templates := []string{
 		"wallet_created.tmpl",
 		"wallet_list.tmpl",
+		"wallet_info.tmpl",
+		"qr_ascii.tmpl",
+		"transaction.tmpl",
 		// ... 其他模板
 	}
 
