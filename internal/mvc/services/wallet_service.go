@@ -22,7 +22,7 @@ func NewWalletService(repo *storage.WalletRepository, cryptoService *CryptoServi
 	}
 }
 
-func (s *WalletService) CreateHDWallet(name, password string) (*models.VirtualWallet, error) {
+func (s *WalletService) CreateHDWallet(name, password, cloak string) (*models.VirtualWallet, error) {
 	// 生成助记词
 	entropy, _ := bip39.NewEntropy(128)
 	mnemonic, _ := bip39.NewMnemonic(entropy)

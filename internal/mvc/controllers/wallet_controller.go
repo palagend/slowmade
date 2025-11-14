@@ -17,8 +17,8 @@ func NewWalletController(service *services.WalletService, renderer *views.Templa
 	}
 }
 
-func (c *WalletController) CreateWallet(name, password string) (string, error) {
-	wallet, err := c.walletService.CreateHDWallet(name, password)
+func (c *WalletController) CreateWallet(name, password, cloak string) (string, error) {
+	wallet, err := c.walletService.CreateHDWallet(name, password, cloak)
 	if err != nil {
 		return "", err
 	}

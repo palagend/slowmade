@@ -136,7 +136,7 @@ func (s *interactiveSession) handleNewCommand(args []string) {
 	}
 
 	// 使用 WalletController 创建钱包
-	result, err := walletController.CreateWallet(walletName, password)
+	result, err := walletController.CreateWallet(walletName, password, cloak)
 	if err != nil {
 		fmt.Printf("[X] Error creating wallet: %v\n", err)
 		return

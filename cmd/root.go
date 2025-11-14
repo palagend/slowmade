@@ -3,92 +3,80 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/palagend/slowmade/internal/config"
 	"github.com/palagend/slowmade/internal/logging"
-	"github.com/palagend/slowmade/internal/mvc/controllers"
-	"github.com/palagend/slowmade/internal/mvc/services"
-	"github.com/palagend/slowmade/internal/mvc/views"
-	"github.com/palagend/slowmade/internal/storage"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgFile          string
-	appConfig        *config.AppConfig
-	walletController *controllers.WalletController
+	cfgFile   string
+	appConfig *config.AppConfig
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "slowmade",
 	Short: "A secure cryptocurrency wallet CLI",
-	Long: `A secure HD cryptocurrency wallet supporting multiple currencies,
-built with MVC architecture and enterprise-grade security.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return initializeConfig()
-	},
+	Long:  `A secure HD cryptocurrency wallet supporting multiple currencies,`,
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logging.Error("命令执行失败", map[string]interface{}{"error": err})
+		// 此时日志系统可能还未初始化，使用标准错误输出
+		fmt.Fprintf(os.Stderr, "命令执行失败: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "~/.config/slowmade.yaml", "config file")
-	rootCmd.PersistentFlags().String("template-dir", "", "custom template directory")
-	rootCmd.PersistentFlags().StringP("keystore-dir", "d", "~/.slowmade/keystores", "keystore directory")
-	// 绑定环境变量
-	viper.SetEnvPrefix("SLOWMADE")
-	viper.BindPFlag("template.custom_template_dir", rootCmd.PersistentFlags().Lookup("template-dir"))
-	viper.BindPFlag("storage.keystore_dir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
+	// 1. 首先定义命令行标志
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "配置文件路径 (默认搜索标准配置目录)")
+	rootCmd.PersistentFlags().String("template-dir", "", "自定义模板目录")
+	rootCmd.PersistentFlags().Bool("enable-template", false, "是否启用自定义模板")
+	rootCmd.PersistentFlags().String("log-level", "", "日志级别")
+	rootCmd.PersistentFlags().StringP("keystore-dir", "d", "", "密钥存储目录")
+
+	// 2. 将初始化函数注册到OnInitialize
+	cobra.OnInitialize(initConfig)
 }
 
-func initializeConfig() error {
+// initConfig 初始化配置系统
+func initConfig() {
+	// 设置环境变量
+	viper.SetEnvPrefix("SLOWMADE")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	viper.AutomaticEnv() // 自动读取所有环境变量
+
+	// 绑定命令行标志到Viper
+	viper.BindPFlag("template.custom_template_dir", rootCmd.PersistentFlags().Lookup("template-dir"))
+	viper.BindPFlag("template.enable_custom_templates", rootCmd.PersistentFlags().Lookup("enable-template"))
+	viper.BindPFlag("storage.keystore_dir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
+	viper.BindPFlag("logging.level", rootCmd.PersistentFlags().Lookup("log-level"))
+
+	// 加载配置
 	var err error
 	appConfig, err = config.LoadConfig(cfgFile)
 	if err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "配置加载失败: %v\n", err)
+		os.Exit(1)
 	}
 
-	// 初始化全局日志系统
+	// 初始化日志系统
 	if err := logging.Initialize(&appConfig.Logging); err != nil {
-		return fmt.Errorf("初始化日志系统失败: %v", err)
+		fmt.Fprintf(os.Stderr, "日志系统初始化失败: %v\n", err)
+		os.Exit(1)
 	}
 
-	logging.Debug("配置加载成功", map[string]interface{}{
-		"config_file": cfgFile,
+	logging.Info("应用初始化完成", map[string]interface{}{
+		"config_file": viper.ConfigFileUsed(),
 		"log_level":   appConfig.Logging.Level,
 	})
-
-	initializeDependencies()
-	return nil
 }
 
-func initializeDependencies() {
-	logging.Debug("开始初始化依赖项")
-
-	// 初始化存储
-	repo := storage.NewWalletRepository(appConfig)
-	logging.Debug("存储仓库初始化完成")
-
-	// 初始化服务
-	cryptoService := services.NewCryptoService()
-	walletService := services.NewWalletService(repo, cryptoService)
-	logging.Debug("服务层初始化完成")
-
-	// 初始化视图
-	renderer := views.NewTemplateRenderer(&appConfig.Template)
-	logging.Debug("视图渲染器初始化完成")
-
-	// 打印模板状态（调试用）
-	renderer.PrintStatus()
-
-	// 初始化控制器
-	walletController = controllers.NewWalletController(walletService, renderer)
-	logging.Debug("所有依赖项初始化完成")
+// GetConfig 提供获取配置的公共方法
+func GetConfig() *config.AppConfig {
+	return appConfig
 }
