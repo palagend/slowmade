@@ -1,0 +1,35 @@
+# 中文翻译
+MSG_WELCOME_NEW: "欢迎！未发现现有钱包，让我们创建一个新钱包。"
+MSG_WELCOME_BACK: "欢迎回来！发现现有钱包。"
+MSG_BACKUP_MNEMONIC: "请仔细备份您的助记词："
+MSG_MNEMONIC_WARNING: "警告：此助记词是恢复钱包的唯一方式，请妥善保管！"
+MSG_BACKUP_REQUIRED: "钱包创建已取消，必须确认备份。"
+MSG_WALLET_READY: "钱包创建成功！您现在可以使用钱包命令了。"
+MSG_REPL_READY: "REPL已就绪，输入'help'查看可用命令。"
+MSG_WALLET_LOCKED: "钱包已成功锁定。"
+MSG_GOODBYE: "再见！"
+MSG_BALANCE: "余额：%s %s (≈ %s %s)"
+
+PROMPT_CONFIRM_BACKUP: "您已安全备份助记词了吗？(y/n)"
+
+ERR_GENERATE_MNEMONIC: "生成助记词失败：%v"
+ERR_INVALID_MNEMONIC: "无效的助记词"
+ERR_CREATE_WALLET: "创建钱包失败：%v"
+ERR_WALLET_NOT_FOUND: "未找到钱包"
+ERR_CREATE_WALLET_FAILED: "创建钱包失败：%v"
+ERR_WALLET_LOCKED: "钱包已锁定，请先解锁。"
+ERR_NO_WALLET: "没有可用的钱包"
+ERR_UNKNOWN_COMMAND: "未知命令：%s"
+
+HELP_GENERAL: |
+  可用命令：
+  help [command] - 显示帮助信息
+  balance - 显示当前余额
+  send <地址> <金额> - 发送交易
+  lock - 锁定钱包
+  exit - 退出程序
+
+HELP_SEND: "send <地址> <金额> [--gas-price <价格>] - 发送加密货币到指定地址"
+HELP_BALANCE: "balance - 显示当前钱包余额"
+HELP_LOCK: "lock - 锁定钱包以确保安全"
+HELP_UNKNOWN: "没有可用的帮助信息：%s"

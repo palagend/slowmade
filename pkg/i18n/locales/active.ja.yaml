@@ -1,0 +1,35 @@
+# 日本語翻訳
+MSG_WELCOME_NEW: "ようこそ！既存のウォレットが見つかりませんでした。新しいウォレットを作成しましょう。"
+MSG_WELCOME_BACK: "おかえりなさい！既存のウォレットが見つかりました。"
+MSG_BACKUP_MNEMONIC: "以下のニーモニックフレーズを慎重にバックアップしてください："
+MSG_MNEMONIC_WARNING: "警告：このニーモニックフレーズはウォレットを回復する唯一の方法です。安全に保管してください！"
+MSG_BACKUP_REQUIRED: "ウォレット作成がキャンセルされました。バックアップの確認が必要です。"
+MSG_WALLET_READY: "ウォレットが正常に作成されました！ウォレットコマンドを使用できます。"
+MSG_REPL_READY: "REPLの準備が整いました。'help'と入力して利用可能なコマンドを表示してください。"
+MSG_WALLET_LOCKED: "ウォレットが正常にロックされました。"
+MSG_GOODBYE: "さようなら！"
+MSG_BALANCE: "残高：%s %s (≈ %s %s)"
+
+PROMPT_CONFIRM_BACKUP: "ニーモニックフレーズを安全にバックアップしましたか？(y/n)"
+
+ERR_GENERATE_MNEMONIC: "ニーモニックフレーズの生成に失敗しました：%v"
+ERR_INVALID_MNEMONIC: "無効なニーモニックフレーズ"
+ERR_CREATE_WALLET: "ウォレットの作成に失敗しました：%v"
+ERR_WALLET_NOT_FOUND: "ウォレットが見つかりません"
+ERR_CREATE_WALLET_FAILED: "ウォレットの作成に失敗しました：%v"
+ERR_WALLET_LOCKED: "ウォレットがロックされています。まずロックを解除してください。"
+ERR_NO_WALLET: "利用可能なウォレットがありません"
+ERR_UNKNOWN_COMMAND: "不明なコマンド：%s"
+
+HELP_GENERAL: |
+  利用可能なコマンド：
+  help [command] - ヘルプ情報を表示
+  balance - 現在の残高を表示
+  send <アドレス> <金額> - トランザクションを送信
+  lock - ウォレットをロック
+  exit - アプリケーションを終了
+
+HELP_SEND: "send <アドレス> <金額> [--gas-price <価格>] - 暗号通貨を指定アドレスに送信"
+HELP_BALANCE: "balance - 現在のウォレット残高を表示"
+HELP_LOCK: "lock - セキュリティのためにウォレットをロック"
+HELP_UNKNOWN: "利用可能なヘルプがありません：%s"

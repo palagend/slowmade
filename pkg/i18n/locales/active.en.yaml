@@ -1,0 +1,35 @@
+# English translations
+MSG_WELCOME_NEW: "Welcome! No existing wallet found. Let's create a new one."
+MSG_WELCOME_BACK: "Welcome back! Existing wallet found."
+MSG_BACKUP_MNEMONIC: "Please carefully backup your mnemonic phrase:"
+MSG_MNEMONIC_WARNING: "WARNING: This mnemonic is the only way to recover your wallet. Keep it safe and secure!"
+MSG_BACKUP_REQUIRED: "Wallet creation cancelled. Backup confirmation is required."
+MSG_WALLET_READY: "Wallet created successfully! You can now use wallet commands."
+MSG_REPL_READY: "REPL ready. Type 'help' for available commands."
+MSG_WALLET_LOCKED: "Wallet locked successfully."
+MSG_GOODBYE: "Goodbye!"
+MSG_BALANCE: "Balance: %s %s (≈ %s %s)"
+
+PROMPT_CONFIRM_BACKUP: "Have you securely backed up your mnemonic? (y/n)"
+
+ERR_GENERATE_MNEMONIC: "Failed to generate mnemonic: %v"
+ERR_INVALID_MNEMONIC: "Invalid mnemonic phrase"
+ERR_CREATE_WALLET: "Failed to create wallet: %v"
+ERR_WALLET_NOT_FOUND: "Wallet not found"
+ERR_CREATE_WALLET_FAILED: "Failed to create wallet: %v"
+ERR_WALLET_LOCKED: "Wallet is locked. Please unlock first."
+ERR_NO_WALLET: "No wallet available"
+ERR_UNKNOWN_COMMAND: "Unknown command: %s"
+
+HELP_GENERAL: |
+  Available commands:
+  help [command] - Show help information
+  balance - Show current balance
+  send <address> <amount> - Send transaction
+  lock - Lock the wallet
+  exit - Exit the application
+
+HELP_SEND: "send <address> <amount> [--gas-price <price>] - Send cryptocurrency to address"
+HELP_BALANCE: "balance - Display current wallet balance"
+HELP_LOCK: "lock - Lock the wallet for security"
+HELP_UNKNOWN: "No help available for: %s"

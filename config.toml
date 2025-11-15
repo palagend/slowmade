@@ -1,0 +1,17 @@
+# RPC Configuration
+[rpc]
+endpoint = "http://localhost:8545"
+timeout = 30
+
+# Keystore Configuration
+[keystore]
+path = "./keystore"
+
+# Logging Configuration
+[log]
+level = "info"
+file = "slowmade.log"
+
+# UI Configuration
+[ui]
+lang = "en"
