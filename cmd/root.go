@@ -5,15 +5,11 @@ import (
 	"os"
 
 	"github.com/palagend/slowmade/internal/app"
+	"github.com/palagend/slowmade/internal/config"
 	"github.com/palagend/slowmade/pkg/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-)
-
-var (
-	cfgFile string
-	debug   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -40,54 +36,24 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.toml)")
+	rootCmd.PersistentFlags().String("config", "", "config file")
 	rootCmd.PersistentFlags().String("lang", "en", "language preference (en/zh/ja)")
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug")
 
-	viper.BindPFlag("lang", rootCmd.PersistentFlags().Lookup("lang"))
+	cobra.OnInitialize(initConfig)
 }
+
+var debug bool
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName("config")
-		viper.SetConfigType("toml")
-		viper.AddConfigPath(".")
-	}
-
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
-		createDefaultConfig()
-	}
-
-	logConfig := logging.Config{
-		Level:    viper.GetString("log.level"),
-		Encoding: "json",
-	}
+	viper.BindPFlag("config", rootCmd.Flags().Lookup("config"))
+	viper.BindPFlag("ui.lang", rootCmd.Flags().Lookup("lang"))
 	if debug {
-		logConfig.Level = "debug"
+		viper.GetViper().Set("log.level", "debug")
 	}
-	if err := logging.Init(logConfig); err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
+
+	if _, err := config.Load(); err != nil {
+		fmt.Printf("Failed to initialize config: %v\n", err)
 		os.Exit(1)
-	}
-
-	logging.Get().Info("Configuration loaded",
-		zap.String("config", viper.ConfigFileUsed()))
-}
-
-func createDefaultConfig() {
-	viper.SetDefault("rpc.endpoint", "http://localhost:8545")
-	viper.SetDefault("rpc.timeout", 30)
-	viper.SetDefault("keystore.path", "./keystore")
-	viper.SetDefault("log.level", "info")
-	viper.SetDefault("ui.lang", "en")
-
-	if err := viper.SafeWriteConfig(); err != nil {
-		fmt.Printf("Warning: Failed to create config file: %v\n", err)
 	}
 }

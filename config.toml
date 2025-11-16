@@ -10,7 +10,8 @@ path = "./keystore"
 # Logging Configuration
 [log]
 level = "info"
-file = "slowmade.log"
+file = "/var/log/slowmade.log"
+encoding = "console"
 
 # UI Configuration
 [ui]
