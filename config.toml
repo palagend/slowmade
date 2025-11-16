@@ -16,3 +16,8 @@ encoding = "console"
 # UI Configuration
 [ui]
 lang = "en"
+
+# Web Configuration
+[web]
+host = localhost
+port = 8080

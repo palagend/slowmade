@@ -46,13 +46,13 @@ func init() {
 var debug bool
 
 func initConfig() {
-	viper.BindPFlag("config", rootCmd.Flags().Lookup("config"))
-	viper.BindPFlag("ui.lang", rootCmd.Flags().Lookup("lang"))
+	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	viper.BindPFlag("ui.lang", rootCmd.PersistentFlags().Lookup("lang"))
 	if debug {
 		viper.GetViper().Set("log.level", "debug")
 	}
 
-	if _, err := config.Load(); err != nil {
+	if err := config.Load(); err != nil {
 		fmt.Printf("Failed to initialize config: %v\n", err)
 		os.Exit(1)
 	}

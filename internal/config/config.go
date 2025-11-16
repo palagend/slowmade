@@ -16,6 +16,7 @@ type AppConfig struct {
 	Keystore KeystoreConfig `mapstructure:"keystore"`
 	Log      LogConfig      `mapstructure:"log"`
 	UI       UIConfig       `mapstructure:"ui"`
+	Web      WebConfig      `mapstructure:"web"`
 }
 
 type RPCConfig struct {
@@ -37,9 +38,15 @@ type UIConfig struct {
 	Lang string `mapstructure:"lang"`
 }
 
+type WebConfig struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Mode string `mapstructure:"mode"`
+}
+
 // Load 加载配置并初始化日志
 // 配置优先级: 命令行参数 > 环境变量 > 配置文件 > 默认值
-func Load() (*AppConfig, error) {
+func Load() error {
 	v := viper.GetViper()
 
 	// 1. 首先设置默认值
@@ -50,27 +57,26 @@ func Load() (*AppConfig, error) {
 
 	// 3. 读取配置文件
 	if err := setupConfigFile(v); err != nil {
-		return nil, err
+		return err
 	}
 
 	// 5. 自动读取环境变量（覆盖配置文件中的值）
 	v.AutomaticEnv()
 
 	// 6. 反序列化到结构体
-	var appConfig AppConfig
 	if err := v.Unmarshal(&appConfig); err != nil {
-		return nil, fmt.Errorf("unable to decode config into struct: %w", err)
+		return fmt.Errorf("unable to decode config into struct: %w", err)
 	}
 
 	// 7. 初始化日志系统
 	if err := setupLogging(appConfig.Log); err != nil {
-		return nil, err
+		return err
 	}
 
 	// 记录配置加载信息
 	logConfigSources(v)
 
-	return &appConfig, nil
+	return nil
 }
 
 // setDefaults 设置所有配置的默认值
@@ -167,30 +173,34 @@ func logConfigSources(v *viper.Viper) {
 	)
 }
 
-// 辅助函数：获取特定配置值的方法
-
-// GetRPCEndpoint 获取 RPC 端点
-func (c *AppConfig) GetRPCEndpoint() string {
-	return c.RPC.Endpoint
+// 辅助函数
+// GetWebConfig 返回Web相关的配置，供web模块使用
+func (c *AppConfig) GetWebConfig() WebConfig {
+	return c.Web
 }
 
-// GetLogLevel 获取日志级别
-func (c *AppConfig) GetLogLevel() string {
-	return c.Log.Level
+// GetRPCConfig 返回RPC相关的配置，供需要与链交互的模块使用
+func (c *AppConfig) GetRPCConfig() RPCConfig {
+	return c.RPC
 }
 
-// GetUILanguage 获取 UI 语言
-func (c *AppConfig) GetUILanguage() string {
-	return c.UI.Lang
+// GetKeystoreConfig 返回Keystore相关的配置，供账户管理模块使用
+func (c *AppConfig) GetKeystoreConfig() KeystoreConfig {
+	return c.Keystore
 }
 
-// IsDebug 检查是否为调试模式
-func (c *AppConfig) IsDebug() bool {
-	return c.Log.Level == "debug"
+// GetLogConfig 返回日志相关的配置
+func (c *AppConfig) GetLogConfig() LogConfig {
+	return c.Log
 }
 
-// Reload 重新加载配置（用于热重载）
-func Reload() (*AppConfig, error) {
-	logging.Get().Info("（简化版热重载，需要优化）Reloading configuration...")
-	return Load()
+// GetUIConfig 返回用户界面相关的配置，供UI模块使用
+func (c *AppConfig) GetUIConfig() UIConfig {
+	return c.UI
+}
+
+var appConfig AppConfig
+
+func GetAppConfig() AppConfig {
+	return appConfig
 }

@@ -9,20 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/palagend/slowmade/internal/config"
 	"github.com/palagend/slowmade/pkg/logging"
 	"go.uber.org/zap"
 )
 
-// Server 配置结构体
-type Config struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
-	Mode string `mapstructure:"mode"` // debug, release, test
-}
-
 // Server 表示 Web 服务器实例
 type Server struct {
-	config      *Config
+	config      *config.WebConfig
 	httpServer  *http.ServeMux
 	logger      *zap.Logger
 	middlewares []Middleware
@@ -33,8 +27,9 @@ type Middleware func(http.Handler) http.Handler
 
 // NewServer 创建新的 Web 服务器实例
 func NewServer() *Server {
+	webConfig := config.GetAppConfig().Web
 	return &Server{
-		config:      &Config{Host: "localhost", Port: 8080, Mode: "debug"},
+		config:      &webConfig,
 		httpServer:  http.NewServeMux(),
 		logger:      logging.Get(),
 		middlewares: make([]Middleware, 0),
