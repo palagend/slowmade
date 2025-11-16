@@ -82,15 +82,22 @@ slowmade/
 │   │   ├── wallet.go           // 钱包生命周期管理（创建、解锁、锁定）
 │   │   ├── keystore.go         // Keystore文件的安全读写
 │   │   └── signer.go           // 交易签名逻辑
+│   │
 │   ├── chain/                  // 区块链适配器层
 │   │   ├── provider.go         // 定义ChainProvider接口
 │   │   └── evm/                // EVM兼容链（如以太坊）实现
 │   │       ├── adapter.go
 │   │       └── rpc_client.go
-│   └── repl/                   // 交互层
-│       ├── session.go          // 会话状态管理（是否已解锁等）
-│       ├── prompt.go           // REPL提示符和输入循环
-│       └── completer.go        // 命令补全逻辑
+│   │
+│   ├── web/                    // web层
+│   │   ├── middleware.go
+│   │   └── server.go
+│   │
+│   └── app/                   // 交互层
+│       ├── repl.go
+│       ├── history.go
+│       └── errors.go
+│
 ├── pkg/
 │   ├── crypto/                 // 基础加密包（可封装或直接引用外部库）
 │   └── i18n/                  // 国际化包
