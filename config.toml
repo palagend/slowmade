@@ -19,5 +19,5 @@ lang = "en"
 
 # Web Configuration
 [web]
-host = localhost
+host = "localhost"
 port = 8080
