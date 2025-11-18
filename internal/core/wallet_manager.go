@@ -72,9 +72,9 @@ func (wm *DefaultWalletManager) CreateNewWallet(password string) (*HDRootWallet,
 
 	// 创建钱包实例
 	wallet := &HDRootWallet{
-		encryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
-		encryptedSeed:     hex.EncodeToString(encryptedSeed),
-		creationTime:      uint64(time.Now().Unix()),
+		EncryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
+		EncryptedSeed:     hex.EncodeToString(encryptedSeed),
+		CreationTime:      uint64(time.Now().Unix()),
 	}
 
 	// 保存到存储
@@ -84,6 +84,22 @@ func (wm *DefaultWalletManager) CreateNewWallet(password string) (*HDRootWallet,
 
 	wm.rootWallet = wallet
 	return wallet, nil
+}
+
+// ExportMnemonic 导出助记词
+func (wm *DefaultWalletManager) ExportMnemonic(password string) (string, error) {
+	hd, err := wm.storage.LoadRootWallet()
+	if err != nil {
+		return "", fmt.Errorf("加载根钱包失败！")
+	}
+	mne, err := wm.cryptoService.DecryptData([]byte(hd.EncryptedMnemonic), password)
+	if err != nil {
+		return "", fmt.Errorf("解密失败！")
+	}
+	if mne != nil {
+		return string(mne), nil
+	}
+	return "", fmt.Errorf("导出助记词失败！")
 }
 
 // RestoreWalletFromMnemonic 从助记词恢复钱包
@@ -112,9 +128,9 @@ func (wm *DefaultWalletManager) RestoreWalletFromMnemonic(mnemonic, password str
 
 	// 创建钱包实例
 	wallet := &HDRootWallet{
-		encryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
-		encryptedSeed:     hex.EncodeToString(encryptedSeed),
-		creationTime:      uint64(time.Now().Unix()),
+		EncryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
+		EncryptedSeed:     hex.EncodeToString(encryptedSeed),
+		CreationTime:      uint64(time.Now().Unix()),
 	}
 
 	// 保存到存储
@@ -127,7 +143,7 @@ func (wm *DefaultWalletManager) RestoreWalletFromMnemonic(mnemonic, password str
 }
 
 // UnlockWallet 解锁钱包
-func (wm *DefaultWalletManager) UnlockWallet(encryptedMnemonic []byte, password string) error {
+func (wm *DefaultWalletManager) UnlockWallet(password string) error {
 	wm.mutex.Lock()
 	defer wm.mutex.Unlock()
 
@@ -140,8 +156,7 @@ func (wm *DefaultWalletManager) UnlockWallet(encryptedMnemonic []byte, password 
 		return errors.New("钱包不存在")
 	}
 
-	// 尝试解密助记词验证密码
-	encryptedData, err := hex.DecodeString(string(encryptedMnemonic))
+	encryptedData, err := hex.DecodeString(string(wallet.EncryptedMnemonic))
 	if err != nil {
 		return fmt.Errorf("解码加密数据失败: %w", err)
 	}
@@ -183,12 +198,12 @@ func (wm *DefaultWalletManager) wipeSensitiveData() {
 	}
 
 	// 1. 擦除Seed
-	if wm.rootWallet.encryptedMnemonic != "" {
-		crypto.SecureWipeBytes([]byte(wm.rootWallet.encryptedSeed))
+	if wm.rootWallet.EncryptedMnemonic != "" {
+		crypto.SecureWipeBytes([]byte(wm.rootWallet.EncryptedSeed))
 	}
 	// 2. 擦除助记词（假设 Mnemonic 是 string，需先转为可修改的字节切片）
-	if wm.rootWallet.encryptedMnemonic != "" {
-		crypto.SecureWipeBytes([]byte(wm.rootWallet.encryptedMnemonic))
+	if wm.rootWallet.EncryptedMnemonic != "" {
+		crypto.SecureWipeBytes([]byte(wm.rootWallet.EncryptedMnemonic))
 		// 字符串本身不可变，擦除副本后，原字符串将由GC处理。关键是不再保留引用。
 	}
 

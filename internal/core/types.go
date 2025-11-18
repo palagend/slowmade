@@ -5,8 +5,9 @@ import "fmt"
 // 定义了钱包生命周期管理的核心操作
 type WalletManager interface {
 	CreateNewWallet(password string) (*HDRootWallet, error)                     // 创建新钱包（生成助记词和种子）
+	ExportMnemonic(password string) (string, error)                             // 导出助记词
 	RestoreWalletFromMnemonic(mnemonic, password string) (*HDRootWallet, error) // 从助记词恢复钱包
-	UnlockWallet(encryptedMnemonic []byte, password string) error               // 解锁钱包（解密根种子）
+	UnlockWallet(password string) error                                         // 解锁钱包（解密根种子）
 	LockWallet()                                                                // 锁定钱包（清除内存中的敏感信息）
 	IsUnlocked() bool                                                           // 检查钱包当前是否已解锁
 }
@@ -53,9 +54,9 @@ const (
 
 // 根钱包
 type HDRootWallet struct {
-	encryptedMnemonic string
-	encryptedSeed     string // 加密后的根种子
-	creationTime      uint64
+	EncryptedMnemonic string
+	EncryptedSeed     string
+	CreationTime      uint64
 }
 
 type CoinAccount struct {
