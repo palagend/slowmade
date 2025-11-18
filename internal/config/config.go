@@ -12,11 +12,11 @@ import (
 
 // AppConfig 完整的应用配置结构
 type AppConfig struct {
-	RPC      RPCConfig      `mapstructure:"rpc"`
-	Keystore KeystoreConfig `mapstructure:"keystore"`
-	Log      LogConfig      `mapstructure:"log"`
-	UI       UIConfig       `mapstructure:"ui"`
-	Web      WebConfig      `mapstructure:"web"`
+	RPC     RPCConfig     `mapstructure:"rpc"`
+	Storage StorageConfig `mapstructure:"storage"`
+	Log     LogConfig     `mapstructure:"log"`
+	UI      UIConfig      `mapstructure:"ui"`
+	Web     WebConfig     `mapstructure:"web"`
 }
 
 type RPCConfig struct {
@@ -24,8 +24,8 @@ type RPCConfig struct {
 	Timeout  int    `mapstructure:"timeout"`
 }
 
-type KeystoreConfig struct {
-	Path string `mapstructure:"path"`
+type StorageConfig struct {
+	BaseDir string `mapstructure:"base_dir"`
 }
 
 type LogConfig struct {
@@ -185,8 +185,8 @@ func (c *AppConfig) GetRPCConfig() RPCConfig {
 }
 
 // GetKeystoreConfig 返回Keystore相关的配置，供账户管理模块使用
-func (c *AppConfig) GetKeystoreConfig() KeystoreConfig {
-	return c.Keystore
+func (c *AppConfig) GetStorageConfig() StorageConfig {
+	return c.Storage
 }
 
 // GetLogConfig 返回日志相关的配置

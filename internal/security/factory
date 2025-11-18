@@ -1,0 +1,24 @@
+package security
+
+// NewSecurePassword 创建并返回安全密码管理器实例
+func NewSecurePassword() *PasswordManager {
+	return NewPasswordManager()
+}
+
+// CreateTemporaryPassword 创建临时密码（用于一次性操作）
+func CreateTemporaryPassword(password string) (func() []byte, error) {
+	lockedBuffer, err := memguard.NewBufferFromBytes([]byte(password))
+	if err != nil {
+		return nil, err
+	}
+
+	// 返回一个函数，调用者使用后必须调用返回的清理函数
+	return func() []byte {
+		defer lockedBuffer.Destroy()
+		
+		// 返回密码副本
+		copyBytes := make([]byte, lockedBuffer.Size())
+		copy(copyBytes, lockedBuffer.Bytes())
+		return copyBytes
+	}, nil
+}

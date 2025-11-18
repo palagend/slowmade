@@ -2,17 +2,34 @@ package app
 
 import (
 	"fmt"
+	"syscall"
 
+	"github.com/palagend/slowmade/internal/core"
 	"github.com/palagend/slowmade/internal/view"
+	"github.com/palagend/slowmade/pkg/logging"
+	"golang.org/x/term"
 )
 
 // 钱包管理命令处理函数
 func (r *REPL) handleWalletCreate(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: wallet.create <password>")
+	var password string
+	if len(args) > 1 {
+		return fmt.Errorf("usage: wallet.create [password]")
 	}
-
-	password := args[0]
+	// 如果没有提供密码参数，提示用户输入
+	if len(args) < 1 {
+		fmt.Print("Enter password: ")
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return fmt.Errorf("failed to read password: %v", err)
+		}
+		password = string(bytePassword)
+		fmt.Println() // 换行，因为ReadPassword不会自动换行
+	} else {
+		// 保持向后兼容，支持命令行参数方式（但不推荐）
+		password = args[0]
+		fmt.Println("Warning: Using password from command line arguments is not secure")
+	}
 
 	// 显示创建中状态
 	fmt.Println(r.template.Info("Creating new HD wallet..."))
@@ -56,30 +73,50 @@ func (r *REPL) handleWalletRestore(args []string) error {
 }
 
 func (r *REPL) handleWalletUnlock(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: wallet.unlock <password>")
+	var password string
+	var err error
+
+	// 如果已经解锁，提示用户
+	if !r.walletMgr.IsLocked() {
+		fmt.Println("Wallet is already unlocked")
+		return nil
 	}
 
-	password := args[0]
+	// 如果没有提供密码参数，提示用户输入
+	if len(args) < 1 {
+		fmt.Print("Enter password: ")
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return fmt.Errorf("failed to read password: %v", err)
+		}
+		password = string(bytePassword)
+		fmt.Println() // 换行，因为ReadPassword不会自动换行
+	} else {
+		// 保持向后兼容，支持命令行参数方式（但不推荐）
+		password = args[0]
+		fmt.Println("Warning: Using password from command line arguments is not secure")
+	}
 
-	err := r.walletMgr.UnlockWallet(password)
+	err = r.walletMgr.UnlockWallet(password)
 	if err != nil {
 		return fmt.Errorf("failed to unlock wallet: %v", err)
 	}
-
+	r.passwordMgr.SetPassword(password)
 	fmt.Println(r.template.WalletUnlocked())
 	return nil
 }
 
 func (r *REPL) handleWalletLock(args []string) error {
+	// 锁定钱包
 	r.walletMgr.LockWallet()
+	r.passwordMgr.Clear()
 	fmt.Println(r.template.WalletLocked())
 	return nil
 }
 
 func (r *REPL) handleWalletStatus(args []string) error {
 	status := "locked"
-	if r.walletMgr.IsUnlocked() {
+	if !r.walletMgr.IsLocked() {
 		status = "unlocked"
 	}
 	fmt.Println(r.template.WalletStatus(status))
@@ -88,7 +125,23 @@ func (r *REPL) handleWalletStatus(args []string) error {
 
 // 简化的账户管理命令
 func (r *REPL) handleAccountCreate(args []string) error {
-	r.logger.Info("TODO handleAccountCreate...")
+	if len(args) < 1 {
+		return fmt.Errorf("用法: account create  <派生路径>")
+	}
+
+	derivationPath, err := core.ParseDerivationPath(args[0])
+	if err != nil {
+		return err
+	}
+
+	// 创建新账户
+	account, err := r.accountMgr.CreateNewAccount(derivationPath)
+	if err != nil {
+		return fmt.Errorf("创建账户失败: %v", err)
+	}
+
+	logging.Infof("账户创建成功: ID=%s, 币种=%s, 路径=%s",
+		account.ID, account.CoinSymbol, account.DerivationPath)
 	return nil
 }
 

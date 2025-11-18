@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/palagend/slowmade/internal/config"
 )
 
 // FileStorage 基于本地文件系统的存储实现
@@ -18,12 +20,12 @@ type FileStorage struct {
 }
 
 // NewFileStorage 创建新的文件存储实例
-func NewFileStorage(baseDir string) (*FileStorage, error) {
+func NewFileStorage(cfg config.StorageConfig) (*FileStorage, error) {
 	storage := &FileStorage{
-		baseDir:      baseDir,
-		walletsDir:   filepath.Join(baseDir, "wallets"),
-		accountsDir:  filepath.Join(baseDir, "accounts"),
-		addressesDir: filepath.Join(baseDir, "addresses"),
+		baseDir:      cfg.BaseDir,
+		walletsDir:   filepath.Join(cfg.BaseDir, "wallets"),
+		accountsDir:  filepath.Join(cfg.BaseDir, "accounts"),
+		addressesDir: filepath.Join(cfg.BaseDir, "addresses"),
 	}
 
 	// 创建必要的目录结构
@@ -76,7 +78,7 @@ func (fs *FileStorage) SaveAccount(account *CoinAccount) error {
 	// 检查账户是否已存在，更新或添加
 	found := false
 	for i, acc := range accounts {
-		if acc.id == account.id {
+		if acc.ID == account.ID {
 			accounts[i] = account
 			found = true
 			break
@@ -117,7 +119,7 @@ func (fs *FileStorage) SaveAddress(address *AddressKey) error {
 	fs.mutex.Lock()
 	defer fs.mutex.Unlock()
 
-	addressFile := filepath.Join(fs.addressesDir, fmt.Sprintf("%s_addresses.json", address.accountID))
+	addressFile := filepath.Join(fs.addressesDir, fmt.Sprintf("%s_addresses.json", address.AccountID))
 
 	var addresses []*AddressKey
 	if err := fs.loadFromFile(addressFile, &addresses); err != nil && !os.IsNotExist(err) {
@@ -127,9 +129,9 @@ func (fs *FileStorage) SaveAddress(address *AddressKey) error {
 	// 检查地址是否已存在，更新或添加
 	found := false
 	for i, addr := range addresses {
-		if addr.accountID == address.accountID &&
-			addr.changeType == address.changeType &&
-			addr.addrIndex == address.addrIndex {
+		if addr.AccountID == address.AccountID &&
+			addr.ChangeType == address.ChangeType &&
+			addr.AddressIndex == address.AddressIndex {
 			addresses[i] = address
 			found = true
 			break

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/palagend/slowmade/internal/core"
+	"github.com/palagend/slowmade/internal/security"
 	"github.com/palagend/slowmade/internal/view"
 	"github.com/palagend/slowmade/pkg/logging"
 	"github.com/peterh/liner"
@@ -15,25 +16,28 @@ import (
 
 // REPL 表示一个交互式读取-求值-打印循环环境
 type REPL struct {
-	line      *liner.State
-	history   *HistoryManager
-	running   bool
-	commands  map[string]CommandHandler
-	logger    *zap.Logger
-	walletMgr core.WalletManager
-	template  view.DisplayTemplate
+	line           *liner.State
+	history        *HistoryManager
+	running        bool
+	commands       map[string]CommandHandler
+	logger         *zap.Logger
+	walletMgr      core.WalletManager
+	accountMgr     core.AccountManager
+	template       view.DisplayTemplate
+	cachedPassword []byte
+	passwordMgr    *security.PasswordManager
 }
 
 // CommandHandler 定义命令处理函数类型
 type CommandHandler func(args []string) error
 
 // NewREPL 创建并初始化一个新的 REPL 实例
-func NewREPL(walletMgr core.WalletManager) (*REPL, error) {
-	return NewREPLWithTemplate(walletMgr, &view.DefaultTemplate{})
+func NewREPL(walletMgr core.WalletManager, accountMgr core.AccountManager) (*REPL, error) {
+	return NewREPLWithTemplate(walletMgr, accountMgr, &view.DefaultTemplate{})
 }
 
 // NewREPLWithTemplate 使用自定义模板创建 REPL 实例
-func NewREPLWithTemplate(walletMgr core.WalletManager, template view.DisplayTemplate) (*REPL, error) {
+func NewREPLWithTemplate(walletMgr core.WalletManager, accountMgr core.AccountManager, template view.DisplayTemplate) (*REPL, error) {
 	line := liner.NewLiner()
 	line.SetCtrlCAborts(true)
 	line.SetTabCompletionStyle(liner.TabCircular)
@@ -48,13 +52,15 @@ func NewREPLWithTemplate(walletMgr core.WalletManager, template view.DisplayTemp
 	})
 
 	repl := &REPL{
-		line:      line,
-		history:   NewHistoryManager(),
-		running:   true,
-		logger:    logging.Get(),
-		commands:  make(map[string]CommandHandler),
-		walletMgr: walletMgr,
-		template:  template,
+		line:        line,
+		history:     NewHistoryManager(),
+		running:     true,
+		logger:      logging.Get(),
+		commands:    make(map[string]CommandHandler),
+		walletMgr:   walletMgr,
+		accountMgr:  accountMgr,
+		template:    template,
+		passwordMgr: security.GetPasswordManager(),
 	}
 
 	repl.registerCommands()
@@ -89,7 +95,7 @@ func (r *REPL) registerCommands() {
 
 // getPrompt 使用模板生成提示符
 func (r *REPL) getPrompt() string {
-	return r.template.Prompt(r.walletMgr.IsUnlocked())
+	return r.template.Prompt(r.walletMgr.IsLocked())
 }
 
 // printWelcome 显示欢迎信息

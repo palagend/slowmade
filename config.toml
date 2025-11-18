@@ -4,8 +4,8 @@ endpoint = "http://localhost:8545"
 timeout = 30
 
 # Keystore Configuration
-[keystore]
-path = "./keystore"
+[storage]
+base_dir = "/tmp/wal"
 
 # Logging Configuration
 [log]

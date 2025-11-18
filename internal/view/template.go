@@ -8,7 +8,7 @@ type DisplayTemplate interface {
 	Welcome() string
 
 	// 提示符
-	Prompt(isUnlocked bool) string
+	Prompt(isLocked bool) string
 
 	// 命令输出模板
 	WalletCreated(status string) string
@@ -62,9 +62,9 @@ Type '%shelp%s' for available commands, '%sexit%s' to quit.
 		ColorYellow, ColorReset, ColorYellow, ColorReset)
 }
 
-func (t *DefaultTemplate) Prompt(isUnlocked bool) string {
+func (t *DefaultTemplate) Prompt(isLocked bool) string {
 	status := "LOCKED"
-	if isUnlocked {
+	if !isLocked {
 		status = "unlocked"
 	}
 	return fmt.Sprintf("[%s] > ", status)
@@ -156,14 +156,14 @@ func (t *DefaultTemplate) Help() string {
 ╚════════════════════════════════════════════════════════════════╝%s
 
 %s[WALLET MANAGEMENT]%s
-  %swallet.create <password>%s        - Create a new HD wallet
+  %swallet.create [password]%s        - Create a new HD wallet
   %swallet.restore <mnemonic> <password>%s - Restore wallet from mnemonic
   %swallet.unlock <password>%s        - Unlock wallet with password
   %swallet.lock%s                   - Lock wallet (clear sensitive data)
   %swallet.status%s                 - Check wallet lock status
 
 %s[ACCOUNT MANAGEMENT]%s
-  %saccount.create <coinType> <accountName> <password>%s - Create new account
+  %saccount.create <derivationPath>%s - Create new account
   %saccount.list%s                 - List all accounts
   %saddress.derive <accountID> <password>%s - Derive new address
   %saddress.list <accountID>%s        - List addresses for account
@@ -179,7 +179,7 @@ func (t *DefaultTemplate) Help() string {
   wallet.create mySecurePassword123
   wallet.restore "word1 word2 ... word12" myPassword123
   wallet.unlock myPassword123
-  account.create 60 "My ETH Wallet" myPassword123
+  account.create  m/44'/0'/0'/0/0
 
 %s[SHORTCUTS]%s
   Ctrl+D, Ctrl+C  - Exit immediately

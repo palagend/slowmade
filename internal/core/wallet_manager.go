@@ -1,39 +1,50 @@
 package core
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
+	"github.com/palagend/slowmade/internal/security"
 	"github.com/palagend/slowmade/pkg/crypto"
+	"github.com/palagend/slowmade/pkg/logging"
 	"github.com/palagend/slowmade/pkg/mnemonic"
+	"github.com/tyler-smith/go-bip39"
 )
 
 // DefaultWalletManager 默认的钱包管理器实现
 type DefaultWalletManager struct {
 	storage         StorageHandler
-	rootWallet      *HDRootWallet
-	isUnlocked      bool
-	mutex           sync.RWMutex
-	cryptoService   crypto.CryptoService
 	mnemonicService mnemonic.MnemonicService
+
+	rootWallet *HDRootWallet
+	isLocked   bool
+	isLoaded   bool
+	mutex      sync.RWMutex
+	once       sync.Once
+	cloak      string // A cloak is not a password! Any variation entered in future loads a valid wallet, but with different addresses.
 }
 
 // NewDefaultWalletManager 创建新的钱包管理器实例
-func NewDefaultWalletManager(
-	storage StorageHandler,
-	cryptoService crypto.CryptoService,
-	mnemonicService mnemonic.MnemonicService,
-) *DefaultWalletManager {
+func NewDefaultWalletManager(storage StorageHandler, cloak string) *DefaultWalletManager {
 	return &DefaultWalletManager{
 		storage:         storage,
-		cryptoService:   cryptoService,
-		mnemonicService: mnemonicService,
-		isUnlocked:      false,
+		mnemonicService: mnemonic.NewBIP39MnemonicService(),
+		isLocked:        true,
+		cloak:           cloak,
 	}
+}
+func (wm *DefaultWalletManager) Seed() ([]byte, error) {
+	password, err := security.Password()
+	if err != nil {
+		return nil, err
+	}
+	seed, err := crypto.DecryptData(wm.rootWallet.EncryptedMnemonic, string(password))
+	if err != nil {
+		return nil, err
+	}
+	return seed, nil
 }
 
 // CreateNewWallet 创建新钱包（生成助记词和种子）
@@ -42,38 +53,36 @@ func (wm *DefaultWalletManager) CreateNewWallet(password string) (*HDRootWallet,
 	defer wm.mutex.Unlock()
 
 	// 检查是否已存在钱包
-	existingWallet, err := wm.storage.LoadRootWallet()
-	if err != nil {
-		return nil, fmt.Errorf("检查现有钱包失败: %w", err)
-	}
-	if existingWallet != nil {
+	if wm.rootWallet != nil {
 		return nil, errors.New("钱包已存在")
 	}
-
+	logging.Debug("Generating mnemonic...")
 	// 使用助记词服务生成助记词
 	mnemonic, err := wm.mnemonicService.GenerateMnemonic(256) // 256位强度
 	if err != nil {
 		return nil, fmt.Errorf("生成助记词失败: %w", err)
 	}
-
+	logging.Debug("Generating seed...")
 	// 从助记词生成种子
-	seed := wm.mnemonicService.GenerateSeedFromMnemonic(mnemonic, password)
+	seed := wm.mnemonicService.GenerateSeedFromMnemonic(mnemonic, wm.cloak)
 
+	logging.Debug("Encrypting mnemonic...")
 	// 使用加密服务加密敏感数据
-	encryptedMnemonic, err := wm.cryptoService.EncryptData([]byte(mnemonic), password)
+	encryptedMnemonic, err := crypto.EncryptData([]byte(mnemonic), password)
 	if err != nil {
 		return nil, fmt.Errorf("加密助记词失败: %w", err)
 	}
 
-	encryptedSeed, err := wm.cryptoService.EncryptData(seed, password)
+	logging.Debug("Encrypting seed...")
+	encryptedSeed, err := crypto.EncryptData(seed, password)
 	if err != nil {
 		return nil, fmt.Errorf("加密种子失败: %w", err)
 	}
 
 	// 创建钱包实例
 	wallet := &HDRootWallet{
-		EncryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
-		EncryptedSeed:     hex.EncodeToString(encryptedSeed),
+		EncryptedMnemonic: encryptedMnemonic,
+		EncryptedSeed:     encryptedSeed,
 		CreationTime:      uint64(time.Now().Unix()),
 	}
 
@@ -88,11 +97,7 @@ func (wm *DefaultWalletManager) CreateNewWallet(password string) (*HDRootWallet,
 
 // ExportMnemonic 导出助记词
 func (wm *DefaultWalletManager) ExportMnemonic(password string) (string, error) {
-	hd, err := wm.storage.LoadRootWallet()
-	if err != nil {
-		return "", fmt.Errorf("加载根钱包失败！")
-	}
-	mne, err := wm.cryptoService.DecryptData([]byte(hd.EncryptedMnemonic), password)
+	mne, err := crypto.DecryptData(wm.rootWallet.EncryptedMnemonic, password)
 	if err != nil {
 		return "", fmt.Errorf("解密失败！")
 	}
@@ -108,7 +113,7 @@ func (wm *DefaultWalletManager) RestoreWalletFromMnemonic(mnemonic, password str
 	defer wm.mutex.Unlock()
 
 	// 使用助记词服务验证助记词有效性
-	if !wm.mnemonicService.ValidateMnemonic(mnemonic) {
+	if !bip39.IsMnemonicValid(mnemonic) {
 		return nil, errors.New("无效的助记词")
 	}
 
@@ -116,20 +121,20 @@ func (wm *DefaultWalletManager) RestoreWalletFromMnemonic(mnemonic, password str
 	seed := wm.mnemonicService.GenerateSeedFromMnemonic(mnemonic, password)
 
 	// 使用加密服务加密敏感数据
-	encryptedMnemonic, err := wm.cryptoService.EncryptData([]byte(mnemonic), password)
+	encryptedMnemonic, err := crypto.EncryptData([]byte(mnemonic), password)
 	if err != nil {
 		return nil, fmt.Errorf("加密助记词失败: %w", err)
 	}
 
-	encryptedSeed, err := wm.cryptoService.EncryptData(seed, password)
+	encryptedSeed, err := crypto.EncryptData(seed, password)
 	if err != nil {
 		return nil, fmt.Errorf("加密种子失败: %w", err)
 	}
 
 	// 创建钱包实例
 	wallet := &HDRootWallet{
-		EncryptedMnemonic: hex.EncodeToString(encryptedMnemonic),
-		EncryptedSeed:     hex.EncodeToString(encryptedSeed),
+		EncryptedMnemonic: encryptedMnemonic,
+		EncryptedSeed:     encryptedSeed,
 		CreationTime:      uint64(time.Now().Unix()),
 	}
 
@@ -144,30 +149,20 @@ func (wm *DefaultWalletManager) RestoreWalletFromMnemonic(mnemonic, password str
 
 // UnlockWallet 解锁钱包
 func (wm *DefaultWalletManager) UnlockWallet(password string) error {
-	wm.mutex.Lock()
-	defer wm.mutex.Unlock()
-
-	// 加载钱包
-	wallet, err := wm.storage.LoadRootWallet()
-	if err != nil {
-		return fmt.Errorf("加载钱包失败: %w", err)
-	}
-	if wallet == nil {
+	wm.once.Do(func() {
+		if wm.rootWallet == nil {
+			wm.rootWallet, _ = wm.storage.LoadRootWallet()
+		}
+	})
+	if wm.rootWallet == nil {
 		return errors.New("钱包不存在")
 	}
-
-	encryptedData, err := hex.DecodeString(string(wallet.EncryptedMnemonic))
-	if err != nil {
-		return fmt.Errorf("解码加密数据失败: %w", err)
-	}
-
-	_, err = wm.cryptoService.DecryptData(encryptedData, password)
+	_, err := crypto.DecryptData(wm.rootWallet.EncryptedSeed, password)
 	if err != nil {
 		return errors.New("密码错误")
 	}
 
-	wm.rootWallet = wallet
-	wm.isUnlocked = true
+	wm.isLocked = false
 	return nil
 }
 
@@ -177,44 +172,20 @@ func (wm *DefaultWalletManager) LockWallet() {
 	defer wm.mutex.Unlock()
 
 	// 防御性检查：确保钱包实例存在且当前已解锁
-	if wm.rootWallet == nil || !wm.isUnlocked {
+	if wm.rootWallet == nil || wm.isLocked {
 		// 即使未解锁或钱包为空，也确保状态正确
-		wm.isUnlocked = false
+		wm.isLocked = true
 		return
 	}
 
-	// 核心：安全擦除钱包内部的敏感数据
-	wm.wipeSensitiveData()
-
 	// 最终状态设置
-	wm.isUnlocked = false
+	wm.isLocked = true
 	wm.rootWallet = nil // 考虑清空根引用，促进GC回收非敏感数据
 }
 
-// wipeSensitiveData 递归地安全擦除钱包结构体中的敏感数据。
-func (wm *DefaultWalletManager) wipeSensitiveData() {
-	if wm.rootWallet == nil {
-		return
-	}
-
-	// 1. 擦除Seed
-	if wm.rootWallet.EncryptedMnemonic != "" {
-		crypto.SecureWipeBytes([]byte(wm.rootWallet.EncryptedSeed))
-	}
-	// 2. 擦除助记词（假设 Mnemonic 是 string，需先转为可修改的字节切片）
-	if wm.rootWallet.EncryptedMnemonic != "" {
-		crypto.SecureWipeBytes([]byte(wm.rootWallet.EncryptedMnemonic))
-		// 字符串本身不可变，擦除副本后，原字符串将由GC处理。关键是不再保留引用。
-	}
-
-	// 防御性措施：防止编译器优化掉上面的擦除操作
-	// 使用 runtime.KeepAlive 确保在函数返回前，擦除操作已完成
-	runtime.KeepAlive(wm.rootWallet)
-}
-
 // IsUnlocked 检查钱包当前是否已解锁
-func (wm *DefaultWalletManager) IsUnlocked() bool {
+func (wm *DefaultWalletManager) IsLocked() bool {
 	wm.mutex.RLock()
 	defer wm.mutex.RUnlock()
-	return wm.isUnlocked
+	return wm.isLocked
 }

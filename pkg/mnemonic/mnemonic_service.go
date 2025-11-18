@@ -2,21 +2,17 @@
 package mnemonic
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"strings"
 
 	"github.com/tyler-smith/go-bip39"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 // MnemonicService 助记词服务接口
 type MnemonicService interface {
 	GenerateMnemonic(strength int) (string, error)
-	ValidateMnemonic(mnemonic string) bool
-	GenerateSeedFromMnemonic(mnemonic, password string) []byte
-	GenerateEntropy(strength int) ([]byte, error)
+	GenerateSeedFromMnemonic(mnemonic, cloak string) []byte
 }
 
 // BIP39MnemonicService BIP39标准助记词服务实现
@@ -27,7 +23,7 @@ type BIP39MnemonicService struct {
 // NewBIP39MnemonicService 创建新的BIP39助记词服务
 func NewBIP39MnemonicService() *BIP39MnemonicService {
 	return &BIP39MnemonicService{
-		wordList: loadBIP39WordList(), // 加载BIP39标准单词表
+		wordList: bip39.GetWordList(), // 加载BIP39标准单词表
 	}
 }
 
@@ -39,7 +35,7 @@ func (ms *BIP39MnemonicService) GenerateMnemonic(strength int) (string, error) {
 	}
 
 	// 生成熵
-	entropy, err := ms.GenerateEntropy(strength / 8)
+	entropy, err := bip39.NewEntropy(strength)
 	if err != nil {
 		return "", err
 	}
@@ -54,13 +50,6 @@ func (ms *BIP39MnemonicService) GenerateMnemonic(strength int) (string, error) {
 	mnemonic := ms.entropyToMnemonic(entropyWithChecksum)
 
 	return mnemonic, nil
-}
-
-// GenerateEntropy 生成熵源
-func (ms *BIP39MnemonicService) GenerateEntropy(byteSize int) ([]byte, error) {
-	entropy := make([]byte, byteSize)
-	_, err := rand.Read(entropy)
-	return entropy, err
 }
 
 // calculateChecksum 计算校验和
@@ -89,14 +78,8 @@ func (ms *BIP39MnemonicService) entropyToMnemonic(entropy []byte) string {
 }
 
 // GenerateSeedFromMnemonic 从助记词生成种子
-func (ms *BIP39MnemonicService) GenerateSeedFromMnemonic(mnemonic, password string) []byte {
-	// 使用PBKDF2派生种子
-	return pbkdf2.Key([]byte(mnemonic), []byte("mnemonic"+password), 2048, 64, sha256.New)
-}
-
-// ValidateMnemonic 验证助记词有效性
-func (ms *BIP39MnemonicService) ValidateMnemonic(mnemonic string) bool {
-	return bip39.IsMnemonicValid(mnemonic)
+func (ms *BIP39MnemonicService) GenerateSeedFromMnemonic(mnemonic, cloak string) []byte {
+	return bip39.NewSeed(mnemonic, cloak)
 }
 
 // 工具方法
@@ -129,8 +112,4 @@ func (ms *BIP39MnemonicService) isWordInList(word string) bool {
 		}
 	}
 	return false
-}
-
-func loadBIP39WordList() []string {
-	return bip39.GetWordList()
 }

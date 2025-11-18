@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -8,19 +9,17 @@ import (
 	"github.com/palagend/slowmade/internal/app"
 	"github.com/palagend/slowmade/internal/config"
 	"github.com/palagend/slowmade/internal/core"
-	"github.com/palagend/slowmade/pkg/crypto"
 	"github.com/palagend/slowmade/pkg/logging"
-	"github.com/palagend/slowmade/pkg/mnemonic"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 var (
-	debug     bool
-	dataDir   string
-	cloak     string
-	walletMgr core.WalletManager // 改为接口类型而非具体实现
+	debug      bool
+	cloak      string
+	walletMgr  core.WalletManager
+	accountMgr core.AccountManager
 )
 
 var rootCmd = &cobra.Command{
@@ -32,7 +31,7 @@ var rootCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// 进入 REPL 模式
-		replApp, err := app.NewREPL(walletMgr)
+		replApp, err := app.NewREPL(walletMgr, accountMgr)
 		if err != nil {
 			fmt.Printf("Error creating REPL: %v\n", err)
 			os.Exit(1)
@@ -43,14 +42,17 @@ var rootCmd = &cobra.Command{
 
 func initDependencies() {
 	// 创建 WalletManager 实例（具体实现）
-	stor, err := core.NewFileStorage(dataDir)
+	appConfig := config.GetAppConfig()
+	if debug {
+		appConfigStr, _ := json.MarshalIndent(appConfig, "", "  ")
+		logging.Debugf("AppConfig is: %s", appConfigStr)
+	}
+	stor, err := core.NewFileStorage(appConfig.GetStorageConfig())
 	if err != nil {
 		log.Error(err.Error())
 	}
-	cs := crypto.NewAESCryptoService([]byte(cloak))
-	ms := mnemonic.NewBIP39MnemonicService()
-	walletMgr = core.NewDefaultWalletManager(stor, cs, ms)
-
+	walletMgr = core.NewDefaultWalletManager(stor, cloak)
+	accountMgr = core.NewDefaultAccountManager(walletMgr, stor)
 }
 
 func Execute() {
@@ -64,8 +66,8 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "config file")
 	rootCmd.PersistentFlags().String("lang", "en", "language preference (en/zh/ja)")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug")
-	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "storage base directory")
-	rootCmd.PersistentFlags().StringVar(&cloak, "cloak", "", "cloak")
+	rootCmd.PersistentFlags().String("data-dir", "", "storage base directory")
+	rootCmd.PersistentFlags().StringVar(&cloak, "cloak", "", "Advanced feature: a cloak provides optional added security, but it is not stored so it must be remembered!")
 
 	cobra.OnInitialize(initConfig)
 }
@@ -77,6 +79,10 @@ func initConfig() {
 	}
 	if err := viper.BindPFlag("ui.lang", rootCmd.PersistentFlags().Lookup("lang")); err != nil {
 		fmt.Printf("Failed to bind lang flag: %v\n", err)
+	}
+
+	if err := viper.BindPFlag("storage.base_dir", rootCmd.PersistentFlags().Lookup("data-dir")); err != nil {
+		fmt.Printf("Failed to bind data-dir flag: %v\n", err)
 	}
 
 	if debug {
