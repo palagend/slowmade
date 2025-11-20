@@ -33,7 +33,7 @@ type CommandHandler func(args []string) error
 
 // NewREPL 创建并初始化一个新的 REPL 实例
 func NewREPL(walletMgr core.WalletManager, accountMgr core.AccountManager) (*REPL, error) {
-	return NewREPLWithTemplate(walletMgr, accountMgr, &view.DefaultTemplate{})
+	return NewREPLWithTemplate(walletMgr, accountMgr, view.NewDefaultTemplate())
 }
 
 // NewREPLWithTemplate 使用自定义模板创建 REPL 实例

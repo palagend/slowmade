@@ -43,8 +43,8 @@ func (r *REPL) handleWalletCreate(args []string) error {
 	// 显示助记词（重要安全信息）
 	mnemonic, err := r.walletMgr.ExportMnemonic(password)
 	if err == nil && mnemonic != "" {
-		fmt.Printf("\n%sMnemonic Phrase:%s\n", view.ColorYellow, view.ColorReset)
-		fmt.Printf("%s%s%s\n\n", view.ColorGreen, mnemonic, view.ColorReset)
+		fmt.Printf("\n%s\n", view.Yellow("Mnemonic Phrase:"))
+		fmt.Printf("%s\n\n", view.Green(mnemonic))
 		fmt.Println(r.template.Warning("SAVE THIS MNEMONIC PHRASE IN A SECURE LOCATION!"))
 		fmt.Println(r.template.Warning("It can be used to restore your wallet."))
 		fmt.Println(r.template.Separator())
