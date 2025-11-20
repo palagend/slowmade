@@ -187,16 +187,35 @@ func (r *REPL) handleClear(args []string) error {
 	return nil
 }
 
+// 修改 handleHistory 函数使用会话历史记录
 func (r *REPL) handleHistory(args []string) error {
-	history := r.history.GetLast(10) // 减少显示数量
-	if len(history) == 0 {
-		fmt.Println(r.template.Info("No command history"))
+	limit := 50 // 默认显示最近50条记录
+
+	if len(args) > 0 {
+		// 解析可选的限制参数
+		if n, err := fmt.Sscanf(args[0], "%d", &limit); n != 1 || err != nil {
+			return fmt.Errorf("invalid limit: %s. Usage: history [limit]", args[0])
+		}
+		if limit <= 0 {
+			return fmt.Errorf("limit must be positive")
+		}
+	}
+
+	if len(r.sessionHistory) == 0 {
+		fmt.Println("No command history found in current session.")
 		return nil
 	}
 
-	fmt.Println(r.template.HistoryHeader())
-	for i, cmd := range history {
-		fmt.Println(r.template.HistoryItem(i, cmd))
+	// 计算显示的起始索引
+	start := 0
+	if limit < len(r.sessionHistory) {
+		start = len(r.sessionHistory) - limit
+	}
+
+	fmt.Printf("Command history (showing last %d of %d commands from current session):\n",
+		len(r.sessionHistory)-start, len(r.sessionHistory))
+	for i := start; i < len(r.sessionHistory); i++ {
+		fmt.Printf("%5d: %s\n", i+1, r.sessionHistory[i])
 	}
 	return nil
 }

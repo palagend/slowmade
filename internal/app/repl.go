@@ -17,7 +17,6 @@ import (
 // REPL 表示一个交互式读取-求值-打印循环环境
 type REPL struct {
 	line           *liner.State
-	history        *HistoryManager
 	running        bool
 	commands       map[string]CommandHandler
 	logger         *zap.Logger
@@ -26,6 +25,7 @@ type REPL struct {
 	template       view.DisplayTemplate
 	cachedPassword []byte
 	passwordMgr    *security.PasswordManager
+	sessionHistory []string // 当前会话的历史记录
 }
 
 // CommandHandler 定义命令处理函数类型
@@ -53,7 +53,6 @@ func NewREPLWithTemplate(walletMgr core.WalletManager, accountMgr core.AccountMa
 
 	repl := &REPL{
 		line:        line,
-		history:     NewHistoryManager(),
 		running:     true,
 		logger:      logging.Get(),
 		commands:    make(map[string]CommandHandler),
@@ -103,7 +102,7 @@ func (r *REPL) printWelcome() {
 	fmt.Println(r.template.Welcome())
 }
 
-// Run 启动 REPL 主循环（增强错误处理）
+// Run 启动 REPL 主循环
 func (r *REPL) Run() {
 	defer r.Close()
 	r.printWelcome()
@@ -147,11 +146,8 @@ func (r *REPL) Run() {
 			continue
 		}
 
-		// 添加到历史记录
-		r.history.Add(input)
-		if err := r.history.Save(); err != nil {
-			r.logger.Warn("Failed to save history", zap.Error(err))
-		}
+		// 添加到历史记录（liner会自动处理）
+		r.line.AppendHistory(input)
 
 		// 处理输入
 		if err := r.processInput(input); err != nil {
@@ -178,11 +174,16 @@ func (r *REPL) readInputWithFallback() (string, error) {
 	return strings.TrimSpace(line), nil
 }
 
-// processInput 处理用户输入
+// 在 processInput 中添加命令到会话历史记录
 func (r *REPL) processInput(input string) error {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return nil
+	}
+
+	// 添加到会话历史记录（去重）
+	if len(r.sessionHistory) == 0 || r.sessionHistory[len(r.sessionHistory)-1] != input {
+		r.sessionHistory = append(r.sessionHistory, input)
 	}
 
 	parts := strings.Fields(input)
@@ -197,19 +198,12 @@ func (r *REPL) processInput(input string) error {
 		return handler(args)
 	}
 
-	// 移除表达式求值功能，简化 REPL
 	return fmt.Errorf("unknown command: %s. Type 'help' for available commands", command)
 }
 
-// readInput 读取用户输入（支持多行）
+// readInput 读取用户输入
 func (r *REPL) readInput() (string, error) {
-	// 获取并验证提示符
 	prompt := r.getPrompt()
-
-	// 添加调试日志（生产环境可移除）
-	// r.logger.Debug("Prompt generated",
-	// zap.String("prompt", fmt.Sprintf("%q", prompt)),
-	// zap.Int("length", len(prompt)))
 
 	line, err := r.line.Prompt(prompt)
 	if err == liner.ErrPromptAborted || err == io.EOF {
@@ -228,9 +222,6 @@ func (r *REPL) readInput() (string, error) {
 // Close 清理资源
 func (r *REPL) Close() {
 	if r.line != nil {
-		if err := r.history.Save(); err != nil {
-			r.logger.Warn("Failed to save history on close", zap.Error(err))
-		}
 		r.line.Close()
 	}
 }
