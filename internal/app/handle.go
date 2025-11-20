@@ -160,16 +160,6 @@ func (r *REPL) handleAccountList(args []string) error {
 	return nil
 }
 
-func (r *REPL) handleAddressDerive(args []string) error {
-	r.logger.Info("TODO handleAddressDerive...")
-	return nil
-}
-
-func (r *REPL) handleAddressList(args []string) error {
-	r.logger.Info("TODO handleAddressList...")
-	return nil
-}
-
 // 基础命令处理函数
 func (r *REPL) handleExit(args []string) error {
 	r.running = false
@@ -222,5 +212,79 @@ func (r *REPL) handleHistory(args []string) error {
 
 func (r *REPL) handleVersion(args []string) error {
 	fmt.Println(r.template.Version())
+	return nil
+}
+
+func (r *REPL) handleAddressDerive(args []string) error {
+	if len(args) != 3 {
+		return fmt.Errorf("用法: address derive <账户ID> <找零地址/收款地址> [地址索引]")
+	}
+
+	accountID := args[0]
+	changeType := uint32(1)
+	if args[1] == "change" {
+		changeType = 0
+	}
+	startIndex := uint32(0)
+	if len(args) > 2 {
+		if _, err := fmt.Sscanf(args[2], "%d", &startIndex); err != nil {
+			return fmt.Errorf("无效的起始索引参数: %s", args[2])
+		}
+		if startIndex < 0 {
+			return fmt.Errorf("起始索引不能为负数")
+		}
+	}
+
+	// 检查钱包是否已解锁
+	if r.walletMgr.IsLocked() {
+		return fmt.Errorf("钱包已锁定，请先解锁钱包")
+	}
+
+	fmt.Println(r.template.Info(fmt.Sprintf("正在从账户 %s... 派生地址...", accountID[5:13])))
+
+	// 派生地址
+	addr, err := r.accountMgr.DeriveAddress(accountID, changeType, startIndex)
+	if err != nil {
+		return fmt.Errorf("派生地址失败: %v", err)
+	}
+
+	// 显示派生结果
+	if addr.ChangeType == uint32(0) {
+		fmt.Printf("%s (地址索引: %d，币种：%s， 类型： 收款地址)\n", addr.Address, startIndex, addr.CoinSymbol)
+	}
+	if addr.ChangeType == uint32(1) {
+		fmt.Printf("%s (地址索引: %d，币种：%s， 类型： 找零地址)\n", addr.Address, startIndex, addr.CoinSymbol)
+	}
+
+	return nil
+}
+
+func (r *REPL) handleAddressList(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("用法: address list <账户ID> [显示数量]")
+	}
+
+	accountID := args[0]
+
+	// 检查钱包是否已解锁
+	if r.walletMgr.IsLocked() {
+		return fmt.Errorf("钱包已锁定，请先解锁钱包")
+	}
+
+	fmt.Println(r.template.Info(fmt.Sprintf("正在获取账户 %s 的地址列表...", accountID)))
+
+	// 获取地址列表
+	addresses, err := r.accountMgr.GetAddresses(accountID)
+	if err != nil {
+		return fmt.Errorf("获取地址列表失败: %v", err)
+	}
+
+	if len(addresses) == 0 {
+		fmt.Println("该账户尚未派生任何地址")
+		return nil
+	}
+
+	// 显示地址列表
+	fmt.Println(r.template.AddressList(addresses))
 	return nil
 }

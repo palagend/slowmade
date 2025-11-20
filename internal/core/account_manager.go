@@ -9,6 +9,7 @@ import (
 	"github.com/palagend/slowmade/internal/security"
 	"github.com/palagend/slowmade/pkg/coin"
 	"github.com/palagend/slowmade/pkg/crypto"
+	"github.com/palagend/slowmade/pkg/logging"
 	"github.com/tyler-smith/go-bip32"
 )
 
@@ -55,7 +56,12 @@ func (am *DefaultAccountManager) CreateNewAccount(derivationPath *DerivationPath
 	if err != nil {
 		return nil, err
 	}
-	encryptedPrivateKey, err := crypto.EncryptData(accountKey.Key, string(password))
+	serializedKey, err := accountKey.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	logging.Debugf("serializedKey len is %d", len(serializedKey))
+	encryptedPrivateKey, err := crypto.EncryptData(serializedKey, string(password))
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt account private key: %w", err)
 	}
@@ -77,6 +83,9 @@ func (am *DefaultAccountManager) CreateNewAccount(derivationPath *DerivationPath
 
 // GetAccountsByCoin 获取指定币种的所有账户
 func (am *DefaultAccountManager) GetAccountsByCoin(coinType uint32) ([]*CoinAccount, error) {
+	if am.walletManager.IsLocked() {
+		return nil, ErrWalletLocked
+	}
 	accounts, err := am.storage.LoadAccounts()
 	if err != nil {
 		return nil, err
@@ -145,6 +154,7 @@ func (am *DefaultAccountManager) DeriveAddress(accountID string, changeType uint
 		EncryptedPrivateKey: encryptedPrivateKey,
 		PublicKey:           hex.EncodeToString(publicKey),
 		Address:             address,
+		CoinSymbol:          coin.CoinSymbol(targetAccount.CoinType()),
 	}
 
 	// 保存地址
@@ -192,7 +202,6 @@ func (am *DefaultAccountManager) deriveAccountKey(derivationPath *DerivationPath
 	if err != nil {
 		return nil, err
 	}
-
 	return accountKey, nil
 }
 
@@ -240,23 +249,23 @@ func (am *DefaultAccountManager) generateAddress(coinType uint32, key *bip32.Key
 	var err error
 
 	switch coinType {
-	case coin.CoinTypeBTC:
+	case coin.CoinTypeBTC | coin.HardenedBit:
 		generator = &BTCAddressGenerator{}
 		address, err = generator.GenerateAddress(publicKey)
 
-	case coin.CoinTypeETH:
+	case coin.CoinTypeETH | coin.HardenedBit:
 		generator = &ETHAddressGenerator{}
 		address, err = generator.GenerateAddress(publicKey)
 
-	case coin.CoinTypeSOL:
+	case coin.CoinTypeSOL | coin.HardenedBit:
 		generator = &SOLAddressGenerator{}
 		address, err = generator.GenerateAddress(publicKey)
 
-	case coin.CoinTypeBNB:
+	case coin.CoinTypeBNB | coin.HardenedBit:
 		generator = &BNBAddressGenerator{}
 		address, err = generator.GenerateAddress(publicKey)
 
-	case coin.CoinTypeSUI:
+	case coin.CoinTypeSUI | coin.HardenedBit:
 		generator = &SUIAddressGenerator{}
 		address, err = generator.GenerateAddress(publicKey)
 

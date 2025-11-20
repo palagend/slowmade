@@ -23,8 +23,9 @@ type AddressKey struct {
 	EncryptedPrivateKey string // 加密后的地址私钥
 	PublicKey           string // 对应的公钥
 	Address             string // 生成的区块链地址
-	ChangeType          uint32
+	ChangeType          uint32 // 0-外部链（收款地址），1-内部链（找零地址）
 	AddressIndex        uint32
+	CoinSymbol          string
 }
 
 func (c *CoinAccount) CoinType() uint32 {

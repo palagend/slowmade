@@ -21,8 +21,8 @@ const (
 // CoinInfo 币种信息
 type CoinInfo struct {
 	Symbol  string
-	Type    uint32
-	Decimal int // 币种精度
+	Type    uint32 //Coin Type
+	Decimal int    // 币种精度
 }
 
 // coinRegistry 币种注册表

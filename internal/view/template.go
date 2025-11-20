@@ -15,6 +15,7 @@ type DisplayTemplate interface {
 	Prompt(isLocked bool) string
 	WalletCreated(status string) string
 	AccountList(accounts []*core.CoinAccount) string
+	AddressList(addrs []*core.AddressKey) string
 	WalletRestored(status string) string
 	WalletUnlocked() string
 	WalletLocked() string
@@ -388,4 +389,74 @@ func (t *DefaultTemplate) Version() string {
 
 func (t *DefaultTemplate) Separator() string {
 	return t.styles.Border.Render(strings.Repeat("-", 60))
+}
+
+func (t *DefaultTemplate) AddressList(addrs []*core.AddressKey) string {
+	if len(addrs) == 0 {
+		return fmt.Sprintf("%s\n\n%s No addresses found",
+			t.banner("ADDRESS LIST"),
+			IconInfo)
+	}
+
+	// 使用简洁的列表显示
+	var addressList strings.Builder
+	addressList.WriteString(fmt.Sprintf("%s Found %s addresses:\n\n",
+		IconSuccess,
+		t.styles.Highlight.Render(fmt.Sprintf("%d", len(addrs)))))
+
+	for i, addr := range addrs {
+		// 格式化公钥预览
+		publicKeyPreview := "[ENCRYPTED]"
+		if len(addr.PublicKey) > 16 {
+			publicKeyPreview = addr.PublicKey[:8] + "..." +
+				addr.PublicKey[len(addr.PublicKey)-8:]
+		}
+
+		addressList.WriteString(fmt.Sprintf(`%s Address #%d
+  %s Address:       %s
+  %s Public Key:    %s
+  %s Index:         %s
+  %s Account:       %s
+  %s ChangeType:    %d
+  %s Coin:          %s
+`,
+			IconSquare, i+1,
+			IconArrow, t.styles.Highlight.Render(addr.Address),
+			IconArrow, t.styles.Muted.Render(publicKeyPreview),
+			IconArrow, t.styles.Info.Render(fmt.Sprintf("%d", addr.AddressIndex)),
+			IconArrow, addr.AccountID,
+			IconArrow, addr.ChangeType,
+			IconArrow, t.styles.Highlight.Render(addr.CoinSymbol),
+		))
+
+		// 如果不是最后一个地址，添加分隔符
+		if i < len(addrs)-1 {
+			addressList.WriteString("  " + t.Separator() + "\n")
+		}
+	}
+
+	return fmt.Sprintf("%s\n\n%s\n\n%s Each address is derived from a specific account and index",
+		t.banner("ADDRESS LIST"),
+		addressList.String(),
+		IconInfo,
+	)
+}
+
+// 显示派生地址结果
+func (t *DefaultTemplate) AddressDerive(addr *core.AddressKey, index int) {
+	addrType := "收款地址"
+	if addr.ChangeType == uint32(1) {
+		addrType = "找零地址"
+	}
+
+	fmt.Printf(`%s %s
+  %s 地址:     %s
+  %s 地址索引: %s
+  %s 币种:     %s
+`,
+		IconSquare, addrType,
+		IconArrow, t.styles.Highlight.Render(addr.Address),
+		IconArrow, t.styles.Info.Render(fmt.Sprintf("%d", index)),
+		IconArrow, t.styles.Highlight.Render(addr.CoinSymbol),
+	)
 }
