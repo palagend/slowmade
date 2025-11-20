@@ -1,6 +1,11 @@
 package view
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/palagend/slowmade/internal/core"
+	"github.com/spf13/viper"
+)
 
 // DisplayTemplate 定义显示模板接口
 type DisplayTemplate interface {
@@ -12,6 +17,7 @@ type DisplayTemplate interface {
 
 	// 命令输出模板
 	WalletCreated(status string) string
+	AccountList(accounts []*core.CoinAccount) string
 	WalletRestored(status string) string
 	WalletUnlocked() string
 	WalletLocked() string
@@ -67,7 +73,7 @@ func (t *DefaultTemplate) Prompt(isLocked bool) string {
 	if !isLocked {
 		status = "unlocked"
 	}
-	return fmt.Sprintf("[%s] > ", status)
+	return fmt.Sprintf("[%s(%s)] > ", viper.GetString("storage.base_dir"), status)
 }
 
 func (t *DefaultTemplate) WalletCreated(status string) string {
@@ -164,7 +170,7 @@ func (t *DefaultTemplate) Help() string {
 
 %s[ACCOUNT MANAGEMENT]%s
   %saccount.create <derivationPath>%s - Create new account
-  %saccount.list%s                 - List all accounts
+  %saccount.list <CoinSymbol>%s                 - List all accounts for <CoinSymbol>
   %saddress.derive <accountID> <password>%s - Derive new address
   %saddress.list <accountID>%s        - List addresses for account
 
@@ -183,7 +189,6 @@ func (t *DefaultTemplate) Help() string {
 
 %s[SHORTCUTS]%s
   Ctrl+D, Ctrl+C  - Exit immediately
-  Up/Down arrows  - Navigate command history
   Tab            - Auto-completion
 `,
 		ColorCyan, ColorReset,
@@ -252,4 +257,66 @@ func (t *DefaultTemplate) Version() string {
 
 func (t *DefaultTemplate) Separator() string {
 	return fmt.Sprintf("%s%s%s", ColorGray, "────────────────────────────────────────────────────────────────────────", ColorReset)
+}
+
+func (t *DefaultTemplate) AccountList(accounts []*core.CoinAccount) string {
+	if len(accounts) == 0 {
+		return fmt.Sprintf(`%s
+╔════════════════════════════════════════════════════════════════╗
+║                          ACCOUNT LIST                          ║
+╚════════════════════════════════════════════════════════════════╝%s
+
+%s No accounts found
+`,
+			ColorYellow, ColorReset,
+			InfoIcon())
+	}
+
+	// 构建账户列表表格
+	accountsTable := ""
+	for i, account := range accounts {
+		// 交替行颜色
+		rowColor := ColorReset
+		if i%2 == 0 {
+			rowColor = ColorCyan
+		}
+
+		accountsTable += fmt.Sprintf(`%s
+   Account #%d:
+     ID:       %s
+     Coin:     %s%s%s
+     Path:     %s
+     Key:      %s...%s
+`,
+			rowColor,
+			i+1,
+			account.ID,
+			ColorYellow, account.CoinSymbol, rowColor,
+			account.DerivationPath,
+			ColorGray, account.EncryptedAccountPrivateKey[:8]+"..."+account.EncryptedAccountPrivateKey[len(account.EncryptedAccountPrivateKey)-8:])
+	}
+
+	return fmt.Sprintf(`%s
+╔════════════════════════════════════════════════════════════════╗
+║                          ACCOUNT LIST                          ║
+╚════════════════════════════════════════════════════════════════╝%s
+
+%s Found %s%d%s accounts:
+
+%s%s
+%s Account Details:
+%s
+%s Security Notes:
+  • Each account has a unique derivation path
+  • Private keys are encrypted and secure
+  • Use account ID for transaction operations
+`,
+		ColorGreen, ColorReset,
+		SuccessIcon(),
+		ColorCyan, len(accounts), ColorReset,
+		accountsTable,
+		ColorReset,
+		InfoIcon(),
+		ColorReset,
+		WarningIcon())
 }

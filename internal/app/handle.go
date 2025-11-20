@@ -6,6 +6,7 @@ import (
 
 	"github.com/palagend/slowmade/internal/core"
 	"github.com/palagend/slowmade/internal/view"
+	"github.com/palagend/slowmade/pkg/coin"
 	"github.com/palagend/slowmade/pkg/logging"
 	"golang.org/x/term"
 )
@@ -146,7 +147,16 @@ func (r *REPL) handleAccountCreate(args []string) error {
 }
 
 func (r *REPL) handleAccountList(args []string) error {
-	r.logger.Info("TODO handleAccountList...")
+	if len(args) < 1 {
+		return fmt.Errorf("用法: account list  <CoinSymbol>")
+	}
+	coinSymbol := args[0]
+	logging.Debugf("CoinSymbol is %s", coinSymbol)
+	accountList, err := r.accountMgr.GetAccountsByCoin(coin.CoinType(coinSymbol, true))
+	if err != nil {
+		return err
+	}
+	fmt.Println(r.template.AccountList(accountList))
 	return nil
 }
 
