@@ -53,7 +53,8 @@ func (wm *DefaultWalletManager) CreateNewWallet(password string) (*HDRootWallet,
 	defer wm.mutex.Unlock()
 
 	// 检查是否已存在钱包
-	if wm.rootWallet != nil {
+	hd, _ := wm.storage.LoadRootWallet()
+	if hd != nil {
 		return nil, errors.New("钱包已存在")
 	}
 	logging.Debug("Generating mnemonic...")
